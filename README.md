@@ -42,3 +42,4 @@
 - Los productos creados localmente reciben un ID único (timestamp + random) para evitar colisiones con los IDs numéricos de la API.
 - Las listas almacenan solo los IDs de los productos. Si un producto se elimina del catálogo principal, desaparece automáticamente de todas las listas.
 - El proyecto cumple con **arquitectura limpia**: separación de responsabilidades (validaciones, persistencia, renderizado, API, gestión de listas).
+- **npx json-server --watch db.json --port 3000** para iniciar el sevidor

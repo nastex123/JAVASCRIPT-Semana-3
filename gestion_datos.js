@@ -1,7 +1,12 @@
+// ======================
+// API DE USUARIOS (JSON Server)
+// ======================
+const API_USERS = "http://localhost:3000/users";
+const SESSION_KEY = "current_user";
 
+// ======================
 // VARIABLES GLOBALES
-
-
+// ======================
 let productsMap = new Map();        // id -> producto
 let categoriesSet = new Set();
 let userLists = new Map();          // nombreLista -> { productos: Set<id> }
@@ -9,7 +14,9 @@ let currentFilter = "all";
 let searchTerm = "";
 let currentProductForList = null;   // producto que se quiere añadir a lista
 
-// Elementos DOM
+// ======================
+// ELEMENTOS DOM
+// ======================
 const productsContainer = document.getElementById("productsContainer");
 const searchInput = document.getElementById("searchInput");
 const categoryFilter = document.getElementById("categoryFilter");
@@ -24,28 +31,226 @@ const totalProductsSpan = document.getElementById("totalProducts");
 const avgPriceSpan = document.getElementById("avgPrice");
 const totalStockSpan = document.getElementById("totalStock");
 const loadingSpinner = document.getElementById("loadingSpinner");
-// Nuevos elementos de listas
+
+// Elementos de autenticación
+const authContainer = document.getElementById("authContainer");
+const dashboardContainer = document.getElementById("dashboardContainer");
+const loginTabBtn = document.getElementById("loginTabBtn");
+const registerTabBtn = document.getElementById("registerTabBtn");
+const loginFormDiv = document.getElementById("loginForm");
+const registerFormDiv = document.getElementById("registerForm");
+const loginFormElement = document.getElementById("loginFormElement");
+const registerFormElement = document.getElementById("registerFormElement");
+const loginErrorDiv = document.getElementById("loginError");
+const registerErrorDiv = document.getElementById("registerError");
+const userNameDisplay = document.getElementById("userNameDisplay");
+const logoutBtn = document.getElementById("logoutBtn");
+
+// Elementos de listas
 const listModalOverlay = document.getElementById("listModalOverlay");
 const closeListModalBtn = document.getElementById("closeListModalBtn");
 const listModalContent = document.getElementById("listModalContent");
 const listsContainer = document.getElementById("listsContainer");
 const createEmptyListBtn = document.getElementById("createEmptyListBtn");
 
+// ======================
+// FUNCIONES DE AUTENTICACIÓN (SOLO username + password)
+// ======================
+async function registerUser(username, password) {
+    try {
+        const response = await fetch(API_USERS);
+        if (!response.ok) throw new Error("Error al obtener usuarios");
+        const users = await response.json();
 
-// FUNCIÓN GLOBAL escapeHtml (para evitar inyección XSS)
+        // Verificar si el nombre de usuario ya existe (case insensitive)
+        if (users.some(user => user.name.toLowerCase() === username.toLowerCase())) {
+            return { success: false, message: "El nombre de usuario ya está registrado." };
+        }
 
+        // Calcular el máximo ID numérico existente
+        let maxId = 0;
+        users.forEach(user => {
+            let idNum = typeof user.id === 'number' ? user.id : parseInt(user.id, 10);
+            if (!isNaN(idNum) && idNum > maxId) maxId = idNum;
+        });
+        const newId = maxId + 1;
+
+        // Crear usuario INCLUYENDO el id (número entero)
+        const newUser = {
+            id: newId,
+            name: username.trim(),
+            password: password
+        };
+
+        const postResponse = await fetch(API_USERS, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newUser)
+        });
+        if (!postResponse.ok) throw new Error("Error al registrar");
+
+        return { success: true, message: `Registro exitoso. Ahora puedes iniciar sesión con: ${username}` };
+    } catch (error) {
+        console.error(error);
+        return { success: false, message: "Error de conexión con el servidor." };
+    }
+}
+
+async function loginUser(username, password) {
+    try {
+        const response = await fetch(`${API_USERS}?name=${encodeURIComponent(username)}&password=${password}`);
+        const users = await response.json();
+        if (users.length === 1) {
+            const user = users[0];
+            const sessionUser = { id: user.id, name: user.name };
+            localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+            return { success: true, message: `Bienvenido, ${user.name}` };
+        }
+        return { success: false, message: "Usuario o contraseña incorrectos." };
+    } catch (error) {
+        console.error(error);
+        return { success: false, message: "Error de conexión con el servidor." };
+    }
+}
+
+function logout() {
+    localStorage.removeItem(SESSION_KEY);
+    showAuthView();
+}
+
+function checkSession() {
+    const session = localStorage.getItem(SESSION_KEY);
+    if (session) {
+        const user = JSON.parse(session);
+        if (userNameDisplay) userNameDisplay.textContent = user.name;
+        showDashboardView();
+        return true;
+    } else {
+        showAuthView();
+        return false;
+    }
+}
+
+function showDashboardView() {
+    if (authContainer) authContainer.classList.add("hidden");
+    if (dashboardContainer) dashboardContainer.classList.remove("hidden");
+    if (productsMap.size === 0) {
+        initDashboardData();
+    }
+}
+
+function showAuthView() {
+    if (authContainer) authContainer.classList.remove("hidden");
+    if (dashboardContainer) dashboardContainer.classList.add("hidden");
+    if (loginFormElement) loginFormElement.reset();
+    if (registerFormElement) registerFormElement.reset();
+    if (loginErrorDiv) loginErrorDiv.classList.add("hidden");
+    if (registerErrorDiv) registerErrorDiv.classList.add("hidden");
+    setActiveAuthTab("login");
+}
+
+function setActiveAuthTab(tab) {
+    if (tab === "login") {
+        loginTabBtn.classList.add("active");
+        registerTabBtn.classList.remove("active");
+        loginFormDiv.classList.add("active");
+        registerFormDiv.classList.remove("active");
+    } else {
+        registerTabBtn.classList.add("active");
+        loginTabBtn.classList.remove("active");
+        registerFormDiv.classList.add("active");
+        loginFormDiv.classList.remove("active");
+    }
+}
+
+// ======================
+// EVENTOS DE AUTENTICACIÓN
+// ======================
+if (loginTabBtn) {
+    loginTabBtn.addEventListener("click", () => setActiveAuthTab("login"));
+}
+if (registerTabBtn) {
+    registerTabBtn.addEventListener("click", () => setActiveAuthTab("register"));
+}
+
+// Login
+if (loginFormElement) {
+    loginFormElement.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("loginUsername").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        const result = await loginUser(username, password);
+        if (result.success) {
+            showToast(result.message, "success");
+            checkSession();
+        } else {
+            loginErrorDiv.textContent = result.message;
+            loginErrorDiv.classList.remove("hidden");
+        }
+    });
+}
+
+// Registro
+if (registerFormElement) {
+    registerFormElement.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("regUsername").value.trim();
+        const password = document.getElementById("regPassword").value;
+        const confirm = document.getElementById("regConfirmPassword").value;
+
+        if (!username || !password || !confirm) {
+            registerErrorDiv.textContent = "Todos los campos son obligatorios.";
+            registerErrorDiv.classList.remove("hidden");
+            return;
+        }
+        if (username.length < 3) {
+            registerErrorDiv.textContent = "El nombre de usuario debe tener al menos 3 caracteres.";
+            registerErrorDiv.classList.remove("hidden");
+            return;
+        }
+        if (password.length < 6) {
+            registerErrorDiv.textContent = "La contraseña debe tener al menos 6 caracteres.";
+            registerErrorDiv.classList.remove("hidden");
+            return;
+        }
+        if (password !== confirm) {
+            registerErrorDiv.textContent = "Las contraseñas no coinciden.";
+            registerErrorDiv.classList.remove("hidden");
+            return;
+        }
+
+        const result = await registerUser(username, password);
+        if (result.success) {
+            showToast(result.message, "success");
+            setActiveAuthTab("login");
+            registerFormElement.reset();
+            registerErrorDiv.classList.add("hidden");
+        } else {
+            registerErrorDiv.textContent = result.message;
+            registerErrorDiv.classList.remove("hidden");
+        }
+    });
+}
+
+if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+        logout();
+        showToast("Sesión cerrada", "info");
+    });
+}
+
+// ======================
+// FUNCIONES UTILITARIAS
+// ======================
 function escapeHtml(str) {
     if (!str) return "";
-    return str.replace(/[&<>]/g, function(m) {
+    return str.replace(/[&<>]/g, function (m) {
         if (m === "&") return "&amp;";
         if (m === "<") return "&lt;";
         if (m === ">") return "&gt;";
         return m;
     });
 }
-
-
-// HELPER: ID ÚNICO LOCAL
 
 function generateUniqueId() {
     return Date.now() + '-' + Math.random().toString(36).substr(2, 6);
@@ -54,9 +259,6 @@ function generateUniqueId() {
 function isApiId(id) {
     return typeof id === 'number' || /^\d+$/.test(id);
 }
-
-
-// TOAST Y LOADING
 
 function showToast(message, type = "success") {
     const toastContainer = document.getElementById("toastContainer");
@@ -83,9 +285,9 @@ function setLoading(isLoading) {
     }
 }
 
-
+// ======================
 // VALIDACIONES
-
+// ======================
 function validateProduct(product) {
     const errors = [];
     if (!product.title || product.title.trim() === "") errors.push("El título es obligatorio.");
@@ -95,9 +297,9 @@ function validateProduct(product) {
     return { isValid: errors.length === 0, errors };
 }
 
-
+// ======================
 // CATEGORÍAS
-
+// ======================
 function updateCategoriesSet() {
     categoriesSet.clear();
     for (const product of productsMap.values()) {
@@ -121,9 +323,9 @@ function renderCategoryFilter() {
     categoryFilter.value = currentValue;
 }
 
-
+// ======================
 // LOCALSTORAGE (productos y listas)
-
+// ======================
 const STORAGE_KEY = "products_app_data";
 const LISTS_STORAGE_KEY = "user_lists";
 
@@ -164,7 +366,6 @@ function loadListsFromLocalStorage() {
         }
         renderLists();
     } else {
-        // Listas de ejemplo si no hay nada
         if (userLists.size === 0) {
             userLists.set("Favoritos", { productos: new Set() });
             userLists.set("Por comprar", { productos: new Set() });
@@ -174,9 +375,9 @@ function loadListsFromLocalStorage() {
     }
 }
 
-
+// ======================
 // ESTADÍSTICAS
-
+// ======================
 function updateStats() {
     const productsArray = Array.from(productsMap.values());
     const total = productsArray.length;
@@ -187,9 +388,9 @@ function updateStats() {
     if (avgPriceSpan) avgPriceSpan.textContent = avgPrice;
 }
 
-
+// ======================
 // RENDERIZADO DE PRODUCTOS
-
+// ======================
 function getFilteredProducts() {
     let filtered = Array.from(productsMap.values());
     if (currentFilter !== "all") {
@@ -197,8 +398,8 @@ function getFilteredProducts() {
     }
     if (searchTerm.trim() !== "") {
         const term = searchTerm.trim().toLowerCase();
-        filtered = filtered.filter(p => 
-            p.title.toLowerCase().includes(term) || 
+        filtered = filtered.filter(p =>
+            p.title.toLowerCase().includes(term) ||
             (p.description && p.description.toLowerCase().includes(term))
         );
     }
@@ -231,11 +432,11 @@ function createProductCard(product) {
     card.appendChild(titleDiv);
     card.appendChild(desc);
     card.appendChild(footer);
-    
+
     const addToListBtn = footer.querySelector(".add-to-list-btn");
     const editBtn = footer.querySelector(".edit-btn");
     const deleteBtn = footer.querySelector(".delete-btn");
-    
+
     addToListBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         openListModal(product);
@@ -277,9 +478,9 @@ function renderProducts() {
     demonstrateObjectMethods();
 }
 
-
-// DEMOSTRACIÓN DE MÉTODOS DE OBJETOS E ITERACIONES
-
+// ======================
+// DEMOSTRACIÓN DE MÉTODOS DE OBJETOS
+// ======================
 function demonstrateObjectMethods() {
     if (productsMap.size === 0) return;
     const firstProduct = productsMap.values().next().value;
@@ -307,9 +508,9 @@ function demonstrateObjectMethods() {
     console.groupEnd();
 }
 
-
-// CRUD CON API Y SINCRONIZACIÓN DE LISTAS
-
+// ======================
+// CRUD CON API Y LISTAS
+// ======================
 const API_BASE = "https://dummyjson.com/products";
 
 async function fetchProductsFromAPI() {
@@ -357,7 +558,6 @@ async function addProduct(productData, localId) {
         updateCategoriesSet();
         saveToLocalStorage();
         renderProducts();
-        // Llamada a la API (simulada)
         const response = await fetch(`${API_BASE}/add`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -436,7 +636,6 @@ async function deleteProduct(id) {
             await response.json();
         }
         productsMap.delete(id);
-        // Eliminar de todas las listas
         for (let [listName, { productos }] of userLists.entries()) {
             if (productos.has(id)) {
                 productos.delete(id);
@@ -457,9 +656,9 @@ async function deleteProduct(id) {
     }
 }
 
-
+// ======================
 // FUNCIONES DE LISTAS
-
+// ======================
 function addProductToList(listName, productId) {
     const list = userLists.get(listName);
     if (list) {
@@ -548,8 +747,7 @@ function renderLists() {
         listCard.appendChild(productsDiv);
         listCard.appendChild(actionsDiv);
         listsContainer.appendChild(listCard);
-        
-        // Eventos
+
         titleDiv.querySelector(".delete-list-btn").addEventListener("click", () => deleteList(listName));
         actionsDiv.querySelector(".add-current-to-list").addEventListener("click", () => {
             if (currentProductForList) {
@@ -560,7 +758,6 @@ function renderLists() {
                 showToast("Selecciona un producto primero", "warning");
             }
         });
-        // Eventos para eliminar producto de lista
         productsDiv.querySelectorAll(".remove-from-list").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 const list = btn.dataset.list;
@@ -570,9 +767,6 @@ function renderLists() {
         });
     }
 }
-
-
-// MODAL DE LISTAS
 
 function openListModal(product) {
     currentProductForList = product;
@@ -601,7 +795,7 @@ function openListModal(product) {
     const cancelBtn = listModalContent.querySelector("#cancelListModalBtn");
     const existingSelect = listModalContent.querySelector("#existingListSelect");
     const newListInput = listModalContent.querySelector("#newListName");
-    
+
     addBtn.addEventListener("click", () => {
         const selectedList = existingSelect.value;
         const newList = newListInput.value.trim();
@@ -628,9 +822,9 @@ function closeListModal() {
     currentProductForList = null;
 }
 
-
+// ======================
 // MODAL PARA AGREGAR/EDITAR PRODUCTO
-
+// ======================
 let currentEditId = null;
 
 function openAddModal() {
@@ -689,9 +883,9 @@ modalOverlay.addEventListener("click", (e) => {
     if (e.target === modalOverlay) closeModal();
 });
 
-
+// ======================
 // FILTROS Y BÚSQUEDA
-
+// ======================
 if (searchInput) {
     searchInput.addEventListener("input", (e) => {
         searchTerm = e.target.value;
@@ -726,10 +920,10 @@ if (createEmptyListBtn) {
     });
 }
 
-
-// INICIALIZACIÓN
-
-async function init() {
+// ======================
+// INICIALIZACIÓN DEL DASHBOARD
+// ======================
+async function initDashboardData() {
     const hasLocalData = loadFromLocalStorage();
     if (hasLocalData && productsMap.size > 0) {
         renderProducts();
@@ -742,4 +936,9 @@ async function init() {
     demonstrateObjectMethods();
 }
 
-document.addEventListener("DOMContentLoaded", init);
+// Arranque de la aplicación
+document.addEventListener("DOMContentLoaded", () => {
+    if (checkSession()) {
+        initDashboardData();
+    }
+});

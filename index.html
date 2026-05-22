@@ -1,15 +1,120 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Product Dashboard | DummyJSON</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Font Awesome 6 -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
+
 <body>
 
+    <!-- ===================== SECCIÓN DE AUTENTICACIÓN ===================== -->
+    <div id="authContainer" class="auth-container">
+        <div class="auth-card glass-card">
+            <div class="auth-tabs">
+                <button id="loginTabBtn" class="auth-tab active">Iniciar sesión</button>
+                <button id="registerTabBtn" class="auth-tab">Registrarse</button>
+            </div>
+
+            <!-- Formulario de Login -->
+            <div id="loginForm" class="auth-form active">
+                <h2><i class="fas fa-sign-in-alt"></i> Iniciar sesión</h2>
+                <form id="loginFormElement">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> Nombre de usuario</label>
+                        <input type="text" id="loginUsername" placeholder="Tu nombre de usuario" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-lock"></i> Contraseña</label>
+                        <input type="password" id="loginPassword" placeholder="••••••" required>
+                    </div>
+                    <button type="submit" class="btn-primary btn-block">Ingresar</button>
+                </form>
+                <div id="loginError" class="auth-error hidden"></div>
+            </div>
+
+            <!-- Formulario de Registro -->
+            <div id="registerForm" class="auth-form">
+                <h2><i class="fas fa-user-plus"></i> Crear cuenta</h2>
+                <form id="registerFormElement">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> Nombre de usuario</label>
+                        <input type="text" id="regUsername" placeholder="Ej: JuanPerez" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-lock"></i> Contraseña</label>
+                        <input type="password" id="regPassword" placeholder="Mínimo 6 caracteres" required>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-check-circle"></i> Confirmar contraseña</label>
+                        <input type="password" id="regConfirmPassword" placeholder="Repite la contraseña" required>
+                    </div>
+                    <button type="submit" class="btn-primary btn-block">Registrarse</button>
+                </form>
+                <div id="registerError" class="auth-error hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== DASHBOARD (solo visible con sesión) ===================== -->
+    <div id="dashboardContainer" class="app-container hidden">
+        <!-- Header con estadísticas y logout -->
+        <header class="dashboard-header glass-card">
+            <div class="logo-area">
+                <i class="fas fa-boxes"></i>
+                <h1>Gestión de Productos</h1>
+            </div>
+            <div class="stats-area" id="statsArea">
+                <div class="stat-item"><i class="fas fa-user"></i> <span id="userNameDisplay"></span></div>
+                <div class="stat-item"><i class="fas fa-cubes"></i> <span id="totalProducts">0</span> productos</div>
+                <div class="stat-item"><i class="fas fa-chart-line"></i> <span id="avgPrice">0.00</span> € promedio</div>
+                <div class="stat-item"><i class="fas fa-warehouse"></i> <span id="totalStock">0</span> unidades</div>
+                <button id="logoutBtn" class="btn-secondary btn-sm"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+            </div>
+        </header>
+
+        <!-- Barra de acciones -->
+        <div class="action-bar glass-card">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por nombre o descripción...">
+            </div>
+            <div class="filter-box">
+                <i class="fas fa-filter"></i>
+                <select id="categoryFilter">
+                    <option value="all">Todas las categorías</option>
+                </select>
+            </div>
+            <div class="action-buttons">
+                <button id="addProductBtn" class="btn-primary"><i class="fas fa-plus"></i> Nuevo producto</button>
+                <button id="resetApiBtn" class="btn-secondary"><i class="fas fa-sync-alt"></i> Reiniciar desde API</button>
+            </div>
+        </div>
+
+        <!-- Grid de productos -->
+        <div id="productsContainer" class="products-grid">
+            <div class="loading-spinner" id="loadingSpinner">
+                <i class="fas fa-spinner fa-pulse"></i> Cargando productos...
+            </div>
+        </div>
+
+        <!-- Sección de listas -->
+        <div class="lists-section glass-card">
+            <div class="lists-header">
+                <h3><i class="fas fa-list-ul"></i> Mis listas</h3>
+                <button id="createEmptyListBtn" class="btn-secondary btn-sm"><i class="fas fa-plus"></i> Crear lista vacía</button>
+            </div>
+            <div id="listsContainer" class="lists-grid"></div>
+        </div>
+    </div>
+
+    <!-- ===================== MODALES ===================== -->
     <!-- Modal para agregar/editar producto -->
     <div id="modalOverlay" class="modal-overlay hidden">
         <div class="modal glass-card">
@@ -49,67 +154,14 @@
         </div>
     </div>
 
-    <!-- Modal para añadir a lista -->
+    <!-- Modal para listas -->
     <div id="listModalOverlay" class="modal-overlay hidden">
         <div class="modal glass-card" style="max-width: 450px;">
             <div class="modal-header">
                 <h2><i class="fas fa-list"></i> Añadir a lista</h2>
                 <button id="closeListModalBtn" class="close-modal"><i class="fas fa-times"></i></button>
             </div>
-            <div id="listModalContent">
-                <!-- Contenido dinámico (llenado por JavaScript) -->
-            </div>
-        </div>
-    </div>
-
-    <div class="app-container">
-        <!-- Header con estadísticas -->
-        <header class="dashboard-header glass-card">
-            <div class="logo-area">
-                <i class="fas fa-boxes"></i>
-                <h1>Gestión de Productos</h1>
-            </div>
-            <div class="stats-area" id="statsArea">
-                <div class="stat-item"><i class="fas fa-cubes"></i> <span id="totalProducts">0</span> productos</div>
-                <div class="stat-item"><i class="fas fa-chart-line"></i> <span id="avgPrice">0.00</span> € promedio</div>
-                <div class="stat-item"><i class="fas fa-warehouse"></i> <span id="totalStock">0</span> unidades</div>
-            </div>
-        </header>
-
-        <!-- Barra de acciones: búsqueda, filtro y botones -->
-        <div class="action-bar glass-card">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Buscar por nombre o descripción...">
-            </div>
-            <div class="filter-box">
-                <i class="fas fa-filter"></i>
-                <select id="categoryFilter">
-                    <option value="all">Todas las categorías</option>
-                </select>
-            </div>
-            <div class="action-buttons">
-                <button id="addProductBtn" class="btn-primary"><i class="fas fa-plus"></i> Nuevo producto</button>
-                <button id="resetApiBtn" class="btn-secondary"><i class="fas fa-sync-alt"></i> Reiniciar desde API</button>
-            </div>
-        </div>
-
-        <!-- Contenedor de tarjetas de productos -->
-        <div id="productsContainer" class="products-grid">
-            <div class="loading-spinner" id="loadingSpinner">
-                <i class="fas fa-spinner fa-pulse"></i> Cargando productos...
-            </div>
-        </div>
-
-        <!-- Sección de listas del usuario -->
-        <div class="lists-section glass-card">
-            <div class="lists-header">
-                <h3><i class="fas fa-list-ul"></i> Mis listas</h3>
-                <button id="createEmptyListBtn" class="btn-secondary btn-sm"><i class="fas fa-plus"></i> Crear lista vacía</button>
-            </div>
-            <div id="listsContainer" class="lists-grid">
-                <!-- Aquí se renderizan las listas dinámicamente -->
-            </div>
+            <div id="listModalContent"></div>
         </div>
     </div>
 
@@ -118,4 +170,5 @@
 
     <script src="gestion_datos.js"></script>
 </body>
+
 </html>

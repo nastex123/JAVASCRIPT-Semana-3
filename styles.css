@@ -635,3 +635,118 @@ body {
 .list-actions .delete-list-btn:hover {
     background: rgba(239,68,68,0.2);
 }
+
+
+   /* AUTENTICACIÓN */
+  
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    background: var(--bg-primary);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 450px;
+    padding: 32px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.auth-tab {
+    background: transparent;
+    border: none;
+    padding: 8px 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    flex: 1;
+    text-align: center;
+}
+
+.auth-tab.active {
+    color: var(--accent-primary);
+    border-bottom: 2px solid var(--accent-primary);
+}
+
+.auth-form {
+    display: none;
+}
+
+.auth-form.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-form h2 {
+    font-size: 1.5rem;
+    margin-bottom: 24px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-block {
+    width: 100%;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.auth-error {
+    background: rgba(239, 68, 68, 0.15);
+    border-left: 3px solid var(--danger);
+    padding: 10px;
+    margin-top: 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #ff8a8a;
+    text-align: center;
+}
+
+/* Ajuste para mostrar/ocultar dashboard */
+.hidden {
+    display: none !important;
+}
+
+/* Botón de logout */
+#logoutBtn {
+    margin-left: auto;
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+#logoutBtn:hover {
+    background: rgba(239, 68, 68, 0.4);
+}
+
+/* Ajustes responsive */
+@media (max-width: 768px) {
+    .stats-area {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    #logoutBtn {
+        margin-left: 0;
+        width: 100%;
+    }
+}
